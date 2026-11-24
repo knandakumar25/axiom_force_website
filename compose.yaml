@@ -1,0 +1,36 @@
+name: axiom-force-website
+services:
+  website:
+    build:
+      context: .
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+    ports:
+      - "127.0.0.1:${WEBSITE_PORT:-5173}:5173"
+    networks:
+      shared:
+        aliases: [axiom-force-web-proxy]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5173/api/health"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+    restart: unless-stopped
+  playwright:
+    profiles: ["test"]
+    build: ./playwright
+    init: true
+    ipc: host
+    environment:
+      BASE_URL: http://website:5173
+      CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+    volumes:
+      - ./src:/website/src:ro
+    networks: [shared]
+    depends_on:
+      website:
+        condition: service_healthy
+networks:
+  shared:
+    external: true
+    name: axiom-force-shared-website
